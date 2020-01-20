@@ -14,17 +14,23 @@ if __name__ == "__main__":
   from pyspark.conf import SparkConf
   import tensorflow as tf
   import tensorflow_datasets as tfds
+  import os, subprocess
 
   parser = argparse.ArgumentParser()
   parser.add_argument("--num_partitions", help="Number of output partitions", type=int, default=10)
   parser.add_argument("--output", help="HDFS directory to save examples in parallelized format", default="data/mnist")
+  parser.add_argument("--format", help="format for saving the files", default="tfr")
 
   args = parser.parse_args()
   print("args:", args)
 
   sc = SparkContext(conf=SparkConf().setAppName("mnist_data_setup"))
 
-  mnist, info = tfds.load('mnist', with_info=True)
+  classpath = os.environ['CLASSPATH']
+  hadoop_path = os.path.join(os.environ['HADOOP_PREFIX'], 'bin', 'hadoop')
+  hadoop_classpath = subprocess.check_output([hadoop_path, 'classpath', '--glob']).decode()
+  os.environ['CLASSPATH']=classpath + os.pathsep + hadoop_classpath
+  mnist, info = tfds.load('mnist', with_info=True, data_dir='hdfs:///hadoop/tfds_datasets')
   print(info.as_json)
 
   # convert to numpy, then RDDs
